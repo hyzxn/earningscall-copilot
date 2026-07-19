@@ -69,7 +69,9 @@ class AudioCapture:
                 gain = float(os.getenv("AUDIO_GAIN", "1.0"))
                 if gain != 1.0:
                     chunk = np.clip(chunk * gain, -1.0, 1.0)
-                self._q.put(chunk[: self._buffer_samples])
+                chunk = chunk[: self._buffer_samples]
+                if len(chunk) > 0:
+                    self._q.put(chunk)
                 # 남은 오버플로우는 버퍼 첫 항목으로
                 overflow = chunk[self._buffer_samples :]
                 self._buffer = [overflow] if len(overflow) > 0 else []
