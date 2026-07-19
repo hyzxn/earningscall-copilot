@@ -9,7 +9,10 @@ Gemini API 또는 Ollama 로컬 모델로 누적 스크립트를 분석한다.
 """
 import os
 import json
+from pathlib import Path
 import httpx
+
+PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
 # --- 백엔드 설정 ---
@@ -23,39 +26,9 @@ OLLAMA_BASE = os.getenv("OLLAMA_BASE", "http://localhost:11434")
 OLLAMA_MODEL = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
 
 
-SUMMARY_PROMPT = """You are a professional equity research analyst.
-Analyze the following earnings call transcript excerpt and provide:
-1. Key summary (3-5 bullet points, Korean)
-2. Management tone assessment (긍정/중립/부정 + brief reason)
-
-Transcript:
-{transcript}
-
-Respond in Korean. Be concise and factual."""
-
-METRICS_PROMPT = """You are a financial data extraction specialist.
-Extract structured financial metrics from this earnings call transcript.
-
-Transcript:
-{transcript}
-
-Return ONLY valid JSON (no markdown, no explanation):
-{{
-  "eps": {{"actual": null, "consensus": null, "beat_miss": null}},
-  "revenue": {{"actual": null, "unit": null, "yoy_growth": null}},
-  "operating_margin": null,
-  "guidance": {{
-    "next_quarter": null,
-    "full_year": null
-  }},
-  "key_topics": [],
-  "management_tone": null,
-  "notable_quotes": []
-}}
-
-Use null for any field not mentioned in the transcript.
-For numbers, include units in the string (e.g. "$3.2B", "15.3%").
-notable_quotes: max 2 items, each under 20 words."""
+def _load_prompt(name: str) -> str:
+    """prompts/ 디렉토리에서 프롬프트 파일을 읽는다."""
+    return (PROMPTS_DIR / name).read_text(encoding="utf-8")
 
 
 class Analyst:
@@ -102,13 +75,13 @@ class Analyst:
     def get_summary(self, transcript: str) -> str:
         if not transcript.strip():
             return ""
-        prompt = SUMMARY_PROMPT.format(transcript=transcript[-4000:])
+        prompt = _load_prompt("summary.md").format(transcript=transcript[-4000:])
         return self._call(prompt)
 
     def get_metrics(self, transcript: str) -> dict:
         if not transcript.strip():
             return {}
-        prompt = METRICS_PROMPT.format(transcript=transcript[-6000:])
+        prompt = _load_prompt("metrics.md").format(transcript=transcript[-6000:])
         raw = self._call(prompt)
         raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
         try:

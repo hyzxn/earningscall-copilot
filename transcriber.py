@@ -7,6 +7,8 @@ import os
 import numpy as np
 from faster_whisper import WhisperModel
 
+SAMPLE_RATE = 16000
+
 
 class Transcriber:
     def __init__(self):
@@ -20,6 +22,8 @@ class Transcriber:
 
     def transcribe(self, audio: np.ndarray) -> str:
         """float32 numpy 배열 → 텍스트."""
+        if len(audio) < SAMPLE_RATE:  # 1초 미만이면 스킵
+            return ""
         segments, _ = self._model.transcribe(
             audio,
             language=None,        # 자동 감지 (한/영 혼합 대응)
