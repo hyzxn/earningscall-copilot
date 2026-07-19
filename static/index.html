@@ -170,7 +170,6 @@
     /* ── 3분할 메인 ── */
     .panels {
       display: grid;
-      grid-template-columns: 1fr 1fr 1fr;
       gap: 1px;
       background: var(--border);
       flex: 1;
@@ -381,15 +380,16 @@
     }
 
     .panel.hidden {
-      min-width: 32px;
-      max-width: 32px;
       overflow: hidden;
     }
 
     .panel.hidden .panel-header {
-      writing-mode: vertical-lr;
       justify-content: center;
       padding: 8px 0;
+    }
+
+    .panel.hidden .panel-body {
+      display: none;
     }
 
     .panel.hidden .panel-title,
@@ -990,6 +990,11 @@
           btn.disabled = visible.length <= 1;
         }
       });
+
+      // grid columns 동적 조정: 보이는 패널은 1fr, 숨긴 패널은 32px
+      const grid = document.querySelector('.panels');
+      const colDefs = [...panels].map(p => p.classList.contains('hidden') ? '32px' : '1fr');
+      grid.style.gridTemplateColumns = colDefs.join(' ');
     }
 
     document.querySelectorAll('.panel-toggle').forEach(btn => {
