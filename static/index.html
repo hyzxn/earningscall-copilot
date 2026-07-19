@@ -380,6 +380,47 @@
       line-height: 1.8;
     }
 
+    .panel.hidden {
+      min-width: 32px;
+      max-width: 32px;
+      overflow: hidden;
+    }
+
+    .panel.hidden .panel-header {
+      writing-mode: vertical-lr;
+      justify-content: center;
+      padding: 8px 0;
+    }
+
+    .panel.hidden .panel-title,
+    .panel.hidden .panel-badge {
+      display: none;
+    }
+
+    .panel-toggle {
+      font-family: var(--mono);
+      font-size: 14px;
+      padding: 4px 0;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: all 0.15s;
+      line-height: 1;
+      width: 100%;
+    }
+
+    .panel-toggle:hover {
+      border-color: var(--text-dim);
+      color: var(--text);
+    }
+
+    .panel-toggle:disabled {
+      opacity: 0.2;
+      cursor: not-allowed;
+    }
+
     .spinner {
       display: inline-block;
       animation: spin 1s linear infinite;
@@ -602,10 +643,13 @@
   </div>
   <div class="panels">
     <!-- 패널 1: 실시간 자막 -->
-    <div class="panel">
+    <div class="panel" data-panel="transcript">
       <div class="panel-header">
         <span class="panel-title">실시간 자막</span>
-        <span class="panel-badge" id="stt-model">—</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="panel-badge" id="stt-model">—</span>
+          <button class="panel-toggle" data-toggle="transcript" title="패널 숨기기">−</button>
+        </div>
       </div>
       <div class="panel-body" id="transcript-panel">
         <div class="empty-hint">▶ 시작을 누르면 컴퓨터 재생 소리를 전사합니다.</div>
@@ -613,10 +657,13 @@
     </div>
 
     <!-- 패널 2: AI 요약 -->
-    <div class="panel">
+    <div class="panel" data-panel="summary">
       <div class="panel-header">
         <span class="panel-title">AI 요약</span>
-        <span class="panel-badge" id="ai-model">—</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="panel-badge" id="ai-model">—</span>
+          <button class="panel-toggle" data-toggle="summary" title="패널 숨기기">−</button>
+        </div>
       </div>
       <div class="panel-body" id="summary-panel">
         <div class="empty-hint">지정된 시간마다 자동으로 업데이트됩니다.<br>⚡ 즉시 분석 버튼으로 강제 실행 가능.</div>
@@ -624,10 +671,13 @@
     </div>
 
     <!-- 패널 3: 주요 지표 -->
-    <div class="panel">
+    <div class="panel" data-panel="metrics">
       <div class="panel-header">
         <span class="panel-title">주요 지표</span>
-        <span class="panel-badge" id="metrics-updated">—</span>
+        <div style="display:flex;align-items:center;gap:6px">
+          <span class="panel-badge" id="metrics-updated">—</span>
+          <button class="panel-toggle" data-toggle="metrics" title="패널 숨기기">−</button>
+        </div>
       </div>
       <div class="panel-body" id="metrics-panel">
         <div class="empty-hint">EPS, 매출, 가이던스 등<br>언급된 지표를 자동 추출합니다.</div>
@@ -921,12 +971,42 @@
       if (e.key === 'Enter') searchTranscript($('search-input').value.trim());
     });
 
+    // -- 패널 hide/토글 --
+    function updatePanelLayout() {
+      const panels = document.querySelectorAll('.panel');
+      const visible = [...panels].filter(p => !p.classList.contains('hidden'));
+
+      panels.forEach(p => {
+        const btn = p.querySelector('.panel-toggle');
+        btn.textContent = '=';
+      });
+
+      // 숨겨진 패널은 다시 보이기 가능, 나머지 hide 버튼은 1개 남으면 비활성화
+      document.querySelectorAll('.panel-toggle').forEach(btn => {
+        const panel = btn.closest('.panel');
+        if (panel.classList.contains('hidden')) {
+          btn.disabled = false;
+        } else {
+          btn.disabled = visible.length <= 1;
+        }
+      });
+    }
+
+    document.querySelectorAll('.panel-toggle').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const panel = btn.closest('.panel');
+        panel.classList.toggle('hidden');
+        updatePanelLayout();
+      });
+    });
+
     document.addEventListener('DOMContentLoaded', () => {
       ['keyword-pos', 'keyword-neg'].forEach(id => {
         $(id).addEventListener('input', rehighlightAll);
       });
       $('keyword-pos').value = DEFAULT_KEYWORDS.pos.join(', ');
       $('keyword-neg').value = DEFAULT_KEYWORDS.neg.join(', ');
+      updatePanelLayout();
     });
   </script>
 </body>
