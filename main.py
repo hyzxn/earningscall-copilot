@@ -119,8 +119,10 @@ async def ws_endpoint(ws: WebSocket):
                     logger.log_cc(text)
 
             # 주기적 AI 분석 (또는 즉시 분석 요청) - 별도 태스크로 실행
+            # SUMMARY_INTERVAL=0이면 자동 분석 비활성화 (수동 분석만 허용)
             now = time.time()
-            if full_transcript and (force_analyze or (now - last_analysis_time) >= SUMMARY_INTERVAL):
+            auto_analyze = SUMMARY_INTERVAL > 0 and (now - last_analysis_time) >= SUMMARY_INTERVAL
+            if full_transcript and (force_analyze or auto_analyze):
                 # 기존 분석 태스크가 진행 중이면 취소하지 않음 (리소스 절약)
                 if analysis_task is None or analysis_task.done():
                     last_analysis_time = now
