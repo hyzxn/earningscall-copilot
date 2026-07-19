@@ -43,6 +43,15 @@ async def ws_endpoint(ws: WebSocket):
     await ws.accept()
     await ws.send_text(json.dumps({"type": "status", "text": "모델 로딩 중..."}))
 
+    # 언어 설정 대기 (클라이언트에서첫 메시지로 전송)
+    try:
+        lang_msg = await asyncio.wait_for(ws.receive_text(), timeout=5)
+        lang_data = json.loads(lang_msg)
+        whisper_lang = lang_data.get("lang", "ko")
+        os.environ["WHISPER_LANG"] = whisper_lang
+    except (asyncio.TimeoutError, json.JSONDecodeError):
+        whisper_lang = os.getenv("WHISPER_LANG", "ko")
+
     try:
         transcriber = Transcriber()
         analyst = Analyst()
@@ -92,7 +101,7 @@ async def ws_endpoint(ws: WebSocket):
             ai_model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
         await ws.send_text(json.dumps({
             "type": "status",
-            "text": f"녹음 시작 ✓  모델: {os.getenv('WHISPER_MODEL','small')} / {ai_model} ({backend})"
+            "text": f"녹음 시작 ✓  모델: {os.getenv('WHISPER_MODEL','small')} / {ai_model} ({backend}) / 언어: {whisper_lang}"
         }))
 
         while True:
