@@ -89,15 +89,15 @@ earningscall-copilot/
 |------|------|--------|
 | `ANALYZER_BACKEND` | AI 백엔드 선택 (gemini / ollama) | `ollama` |
 | `GEMINI_API_KEY` | Gemini API 키 | — |
-| `GEMINI_MODEL` | Gemini 모델명 | `gemini-2.0-flash` |
+| `GEMINI_MODEL` | Gemini 모델명 | `gemma-4-26b-a4b-it` |
 | `OLLAMA_BASE` | Ollama 서버 URL | `http://localhost:11434` |
 | `OLLAMA_MODEL` | Ollama 모델명 | `qwen3.5:9b` |
 | `WHISPER_MODEL` | Whisper 모델 (tiny/base/small/medium/large-v3) | `small` |
 | `WHISPER_LANG` | Whisper 언어 (ko / en) | `ko` |
 | `WHISPER_DEVICE` | 실행 장치 (cuda / cpu) | `cuda` |
 | `CHUNK_SEC` | 오디오 청크 단위 (초) | `3` |
-| `SUMMARY_INTERVAL_SEC` | AI 분석 주기 (초, 0=비활성화) | `0` |
-| `AUDIO_GAIN` | 오디오 증폭 배율 | `1.0` |
+| `SUMMARY_INTERVAL_SEC` | AI 분석 주기 (초, 0=비활성화) | `60` |
+| `AUDIO_GAIN` | 오디오 증폭 배율 | `2.0` |
 
 ---
 
