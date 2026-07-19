@@ -18,8 +18,10 @@ class Transcriber:
         device = os.getenv("WHISPER_DEVICE", "cuda")
         compute_type = os.getenv("WHISPER_COMPUTE", "float16") if device == "cuda" else "int8"
 
-        # 금융 도메인 초기 프롬프트 로드
-        initial_prompt_path = PROMPTS_DIR / "whisper-initial.md"
+        # 금융 도메인 초기 프롬프트 로드 (언어 선택)
+        whisper_lang = os.getenv("WHISPER_LANG", "ko")
+        prompt_file = f"whisper-initial-{whisper_lang}.md"
+        initial_prompt_path = PROMPTS_DIR / prompt_file
         self._initial_prompt = initial_prompt_path.read_text(encoding="utf-8") if initial_prompt_path.exists() else None
 
         print(f"[Whisper] 모델 로딩: {model_name} / {device} / {compute_type}")

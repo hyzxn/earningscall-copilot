@@ -495,6 +495,10 @@
   <div class="controls">
     <button id="btn-start">▶ 시작</button>
     <button id="btn-stop" disabled>■ 중지</button>
+    <select id="whisper-lang" style="font-family:var(--mono);font-size:11px;background:transparent;border:1px solid var(--border);border-radius:3px;padding:4px 8px;color:var(--text);outline:none;cursor:pointer;">
+      <option value="ko">한국어</option>
+      <option value="en">English</option>
+    </select>
     <span class="label-small" id="word-count">0 단어</span>
     <button id="btn-analyze" disabled>⚡ 즉시 분석</button>
   </div>
@@ -719,10 +723,12 @@
     }
 
     // WebSocket 연결
-    function connect() {
+    function connect(lang) {
       ws = new WebSocket(`ws://${location.host}/ws`);
 
       ws.onopen = () => {
+        // 언어 설정 전송
+        ws.send(JSON.stringify({ type: "set_lang", lang: lang }));
         $('btn-start').disabled = true;
         $('btn-stop').disabled = false;
         $('btn-analyze').disabled = false;
@@ -769,7 +775,7 @@
       isFirstTranscript = true;
       wordCount = 0;
       $('word-count').textContent = '0 단어';
-      connect();
+      connect($('whisper-lang').value);
     };
 
     $('btn-stop').onclick = () => {
