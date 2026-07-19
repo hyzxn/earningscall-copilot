@@ -339,7 +339,18 @@
   .kw-group label.neg { color: #ff8099; }
 </style>
 <script src="/static/keywords.js">
+function rehighlightAll() {
+  document.querySelectorAll('.transcript-line').forEach(div => {
+    if (!div.dataset.raw) return;
+    const ts = div.querySelector('.ts').outerHTML;
+    div.innerHTML = ts + highlightKeywords(div.dataset.raw);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  ['keyword-pos', 'keyword-neg'].forEach(id => {
+    $( id ).addEventListener('input', rehighlightAll);
+  });
   $('keyword-pos').value = DEFAULT_KEYWORDS.pos.join(', ');
   $('keyword-neg').value = DEFAULT_KEYWORDS.neg.join(', ');
 });
@@ -460,6 +471,7 @@ function appendTranscript(text) {
   }
   const div = document.createElement('div');
   div.className = 'transcript-line new';
+  div.dataset.raw = text;
   div.innerHTML = `<span class="ts">${now()}</span>${highlightKeywords(text)}`;
   panel.appendChild(div);
   panel.scrollTop = panel.scrollHeight;
@@ -639,7 +651,18 @@ $('btn-analyze').onclick = () => {
   }
 };
 
+function rehighlightAll() {
+  document.querySelectorAll('.transcript-line').forEach(div => {
+    if (!div.dataset.raw) return;
+    const ts = div.querySelector('.ts').outerHTML;
+    div.innerHTML = ts + highlightKeywords(div.dataset.raw);
+  });
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+  ['keyword-pos', 'keyword-neg'].forEach(id => {
+    $( id ).addEventListener('input', rehighlightAll);
+  });
   $('keyword-pos').value = DEFAULT_KEYWORDS.pos.join(', ');
   $('keyword-neg').value = DEFAULT_KEYWORDS.neg.join(', ');
 });
