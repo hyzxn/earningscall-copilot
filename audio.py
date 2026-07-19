@@ -6,6 +6,7 @@ import asyncio
 import queue
 import threading
 import numpy as np
+import os
 import sounddevice as sd
 
 
@@ -25,7 +26,7 @@ def _find_loopback_device() -> int:
     # (일부 시스템에서 '스피커 (loopback)' 형태로 표시됨)
     for i, dev in enumerate(sd.query_devices()):
         name = dev["name"].lower()
-        if dev["max_input_channels"] > 0 and any(k in name for k in ["loopback", "stereo mix", "what u hear"]):
+        if dev["max_input_channels"] > 0 and any(k in name for k in ["loopback", "stereo mix", "what u hear", "스테레오 믹스"]):
             return i
 
     raise RuntimeError(
@@ -65,6 +66,9 @@ class AudioCapture:
             total = sum(len(a) for a in self._buffer)
             if total >= self._buffer_samples:
                 chunk = np.concatenate(self._buffer)
+                gain = float(os.getenv("AUDIO_GAIN", "1.0"))
+                if gain != 1.0:
+                    chunk = np.clip(chunk * gain, -1.0, 1.0)
                 self._q.put(chunk[: self._buffer_samples])
                 # 남은 오버플로우는 버퍼 첫 항목으로
                 overflow = chunk[self._buffer_samples :]
