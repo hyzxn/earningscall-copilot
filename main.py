@@ -55,6 +55,7 @@ async def ws_endpoint(ws: WebSocket):
     audio = AudioCapture()
     full_transcript = ""
     last_analysis_time = time.time()
+    last_analyzed_pos = 0
 
     try:
         audio.start()
@@ -93,12 +94,14 @@ async def ws_endpoint(ws: WebSocket):
                 last_analysis_time = now
                 await ws.send_text(json.dumps({"type": "status", "text": "AI 분석 중..."}))
 
+                new_text = full_transcript[last_analyzed_pos:]
+                last_analyzed_pos = len(full_transcript)
                 summary, metrics = await asyncio.gather(
                     asyncio.get_event_loop().run_in_executor(
-                        None, analyst.get_summary, full_transcript
+                        None, analyst.get_summary, new_text
                     ),
                     asyncio.get_event_loop().run_in_executor(
-                        None, analyst.get_metrics, full_transcript
+                        None, analyst.get_metrics, new_text
                     ),
                 )
                 if summary:
