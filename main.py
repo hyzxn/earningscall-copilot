@@ -59,9 +59,14 @@ async def ws_endpoint(ws: WebSocket):
 
     try:
         audio.start()
+        backend = os.getenv("ANALYZER_BACKEND", "ollama")
+        if backend == "gemini":
+            ai_model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
+        else:
+            ai_model = os.getenv("OLLAMA_MODEL", "qwen3.5:9b")
         await ws.send_text(json.dumps({
             "type": "status",
-            "text": f"녹음 시작 ✓  모델: {os.getenv('WHISPER_MODEL','small')} / {os.getenv('GEMINI_MODEL','gemini-2.0-flash')}"
+            "text": f"녹음 시작 ✓  모델: {os.getenv('WHISPER_MODEL','small')} / {ai_model} ({backend})"
         }))
 
         while True:
