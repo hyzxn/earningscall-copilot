@@ -28,7 +28,7 @@ class Transcriber:
 
     def transcribe(self, audio: np.ndarray) -> str:
         """float32 numpy 배열 → 텍스트."""
-        if len(audio) < SAMPLE_RATE:  # 1초 미만이면 스킵
+        if audio is None or len(audio) < SAMPLE_RATE:  # 1초 미만이면 스킵
             return ""
         segments, _ = self._model.transcribe(
             audio,
