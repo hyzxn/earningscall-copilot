@@ -1,0 +1,31 @@
+# --- Security ---
+.env
+.env.local
+*.pem
+*.key
+
+# --- Python ---
+venv/
+.venv/
+env/
+ENV/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# --- Logs & Databases ---
+*.log
+*.sqlite
+*.sqlite3
+
+# --- IDE Settings ---
+.vscode/
+.idea/
+
+# --- OS Files ---
+.DS_Store
+Thumbs.db
+
+# --- Project Specific ---
+test-codes/

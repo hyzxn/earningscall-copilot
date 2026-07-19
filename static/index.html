@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="ko">
+
+<head>
+  <meta charset="UTF-8">
+  <title>EarningsCall Copilot</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans+KR:wght@300;400;600&display=swap');
+
+    :root {
+      --bg: #0a0e13;
+      --surface: #111820;
+      --border: #1e2d3d;
+      --accent: #00d4aa;
+      /* 터미널 그린-틸 */
+      --warn: #f59e0b;
+      --neg: #f43f5e;
+      --pos: #22d3ee;
+      --muted: #4a6278;
+      --text: #c8d8e8;
+      --text-dim: #6b8299;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans KR', sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* ── 헤더 ── */
+    header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    header h1 {
+      font-family: var(--mono);
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      color: var(--accent);
+      text-transform: uppercase;
+    }
+
+    #status-bar {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      flex: 1;
+    }
+
+    #elapsed {
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--muted);
+      min-width: 60px;
+      text-align: right;
+    }
+
+    /* 녹음 상태 점 */
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--muted);
+      flex-shrink: 0;
+      transition: background 0.3s;
+    }
+
+    .dot.recording {
+      background: var(--neg);
+      animation: pulse 1.2s infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        opacity: 1
+      }
+
+      50% {
+        opacity: 0.3
+      }
+    }
+
+    /* ── 컨트롤 바 ── */
+    .controls {
+      display: flex;
+      gap: 8px;
+      padding: 10px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+      align-items: center;
+    }
+
+    button {
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 6px 16px;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      cursor: pointer;
+      transition: all 0.15s;
+      background: transparent;
+      color: var(--text-dim);
+    }
+
+    #btn-start {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    #btn-start:hover {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    #btn-stop {
+      border-color: var(--neg);
+      color: var(--neg);
+    }
+
+    #btn-stop:hover {
+      background: var(--neg);
+      color: #fff;
+    }
+
+    #btn-analyze {
+      border-color: var(--warn);
+      color: var(--warn);
+      margin-left: auto;
+    }
+
+    #btn-analyze:hover {
+      background: var(--warn);
+      color: var(--bg);
+    }
+
+    button:disabled {
+      opacity: 0.3;
+      cursor: not-allowed;
+    }
+
+    .label-small {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── 3분할 메인 ── */
+    .panels {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .panel {
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .panel-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 14px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .panel-title {
+      font-family: var(--mono);
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+
+    .panel-badge {
+      font-family: var(--mono);
+      font-size: 9px;
+      color: var(--muted);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 2px;
+    }
+
+    .panel-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px 14px;
+      scroll-behavior: smooth;
+    }
+
+    .panel-body::-webkit-scrollbar {
+      width: 4px;
+    }
+
+    .panel-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .panel-body::-webkit-scrollbar-thumb {
+      background: var(--border);
+      border-radius: 2px;
+    }
+
+    /* ── 자막 패널 ── */
+    .transcript-line {
+      font-family: var(--mono);
+      font-size: 12px;
+      line-height: 1.7;
+      color: var(--text);
+      padding: 3px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+    }
+
+    .transcript-line .ts {
+      color: var(--muted);
+      font-size: 10px;
+      margin-right: 8px;
+    }
+
+    .transcript-line.new {
+      color: #fff;
+    }
+
+    /* ── 요약 패널 ── */
+    .summary-block {
+      margin-bottom: 16px;
+    }
+
+    .summary-block .sum-time {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .summary-block .sum-time::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .summary-block p {
+      font-size: 12.5px;
+      line-height: 1.75;
+      color: var(--text);
+      white-space: pre-wrap;
+    }
+
+    /* ── 지표 패널 ── */
+    .metric-section {
+      margin-bottom: 16px;
+    }
+
+    .metric-label {
+      font-family: var(--mono);
+      font-size: 9px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: 6px;
+    }
+
+    .metric-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      padding: 4px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      font-size: 12px;
+    }
+
+    .metric-row .key {
+      color: var(--text-dim);
+    }
+
+    .metric-row .val {
+      font-family: var(--mono);
+      font-weight: 600;
+      color: var(--pos);
+    }
+
+    .metric-row .val.neg {
+      color: var(--neg);
+    }
+
+    .metric-row .val.neutral {
+      color: var(--text);
+    }
+
+    .tone-badge {
+      display: inline-block;
+      font-family: var(--mono);
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 2px;
+      letter-spacing: 0.05em;
+    }
+
+    .tone-긍정 {
+      background: rgba(34, 211, 238, 0.15);
+      color: var(--pos);
+    }
+
+    .tone-중립 {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--warn);
+    }
+
+    .tone-부정 {
+      background: rgba(244, 63, 94, 0.15);
+      color: var(--neg);
+    }
+
+    .quote-box {
+      border-left: 2px solid var(--accent);
+      padding: 4px 10px;
+      margin: 4px 0;
+      font-size: 11.5px;
+      color: var(--text-dim);
+      font-style: italic;
+      line-height: 1.6;
+    }
+
+    .topics-wrap {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-top: 4px;
+    }
+
+    .topic-chip {
+      font-family: var(--mono);
+      font-size: 10px;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text-dim);
+    }
+
+    .empty-hint {
+      color: var(--muted);
+      font-size: 11px;
+      font-family: var(--mono);
+      padding-top: 8px;
+      line-height: 1.8;
+    }
+
+    .spinner {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <header>
+    <div class="dot" id="dot"></div>
+    <h1>EarningsCall Copilot</h1>
+    <span id="status-bar">대기 중</span>
+    <span id="elapsed">00:00</span>
+  </header>
+
+  <div class="controls">
+    <button id="btn-start">▶ 시작</button>
+    <button id="btn-stop" disabled>■ 중지</button>
+    <span class="label-small" id="word-count">0 단어</span>
+    <button id="btn-analyze" disabled>⚡ 즉시 분석</button>
+  </div>
+
+  <div class="panels">
+    <!-- 패널 1: 실시간 자막 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">실시간 자막</span>
+        <span class="panel-badge" id="stt-model">—</span>
+      </div>
+      <div class="panel-body" id="transcript-panel">
+        <div class="empty-hint">▶ 시작을 누르면 컴퓨터 재생 소리를 전사합니다.</div>
+      </div>
+    </div>
+
+    <!-- 패널 2: AI 요약 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">AI 요약</span>
+        <span class="panel-badge" id="ai-model">—</span>
+      </div>
+      <div class="panel-body" id="summary-panel">
+        <div class="empty-hint">지정된 시간마다 자동 업데이트됩니다.<br>⚡ 즉시 분석 버튼으로 강제 실행 가능.</div>
+      </div>
+    </div>
+
+    <!-- 패널 3: 주요 지표 -->
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">주요 지표</span>
+        <span class="panel-badge" id="metrics-updated">—</span>
+      </div>
+      <div class="panel-body" id="metrics-panel">
+        <div class="empty-hint">EPS, 매출, 가이던스 등<br>언급된 지표를 자동 추출합니다.</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let ws = null;
+    let startTime = null;
+    let elapsedTimer = null;
+    let wordCount = 0;
+    let isFirstTranscript = true;
+
+    const $ = id => document.getElementById(id);
+
+    // 경과 시간
+    function startElapsed() {
+      startTime = Date.now();
+      elapsedTimer = setInterval(() => {
+        const sec = Math.floor((Date.now() - startTime) / 1000);
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        $('elapsed').textContent = `${m}:${s}`;
+      }, 1000);
+    }
+    function stopElapsed() {
+      clearInterval(elapsedTimer);
+    }
+
+    function now() {
+      return new Date().toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    // 자막 추가
+    function appendTranscript(text) {
+      const panel = $('transcript-panel');
+      if (isFirstTranscript) {
+        panel.innerHTML = '';
+        isFirstTranscript = false;
+      }
+      const div = document.createElement('div');
+      div.className = 'transcript-line new';
+      div.innerHTML = `<span class="ts">${now()}</span>${text}`;
+      panel.appendChild(div);
+      panel.scrollTop = panel.scrollHeight;
+
+      // 새 항목 하이라이트 페이드
+      setTimeout(() => div.classList.remove('new'), 2000);
+
+      // 단어 수 업데이트
+      wordCount += text.split(/\s+/).filter(Boolean).length;
+      $('word-count').textContent = `${wordCount.toLocaleString()} 단어`;
+    }
+
+    // 요약 추가
+    function appendSummary(text) {
+      const panel = $('summary-panel');
+      if (panel.querySelector('.empty-hint')) panel.innerHTML = '';
+
+      const block = document.createElement('div');
+      block.className = 'summary-block';
+      block.innerHTML = `
+    <div class="sum-time">${now()} 기준</div>
+    <p>${text}</p>
+  `;
+      panel.insertBefore(block, panel.firstChild);
+    }
+
+    // 지표 렌더링
+    function renderMetrics(data) {
+      const panel = $('metrics-panel');
+      panel.innerHTML = '';
+      $('metrics-updated').textContent = now() + ' 업데이트';
+
+      const add = (label, rows) => {
+        const sec = document.createElement('div');
+        sec.className = 'metric-section';
+        sec.innerHTML = `<div class="metric-label">${label}</div>`;
+        rows.forEach(([k, v, cls = '']) => {
+          if (!v || v === 'null') return;
+          sec.innerHTML += `<div class="metric-row"><span class="key">${k}</span><span class="val ${cls}">${v}</span></div>`;
+        });
+        if (sec.querySelectorAll('.metric-row').length > 0) panel.appendChild(sec);
+      };
+
+      // EPS
+      if (data.eps) {
+        const eps = data.eps;
+        const beat = eps.beat_miss;
+        const beatClass = beat && beat.includes('beat') ? '' : beat && beat.includes('miss') ? 'neg' : 'neutral';
+        add('EPS', [
+          ['실적', eps.actual, ''],
+          ['컨센서스', eps.consensus, 'neutral'],
+          ['결과', eps.beat_miss, beatClass],
+        ]);
+      }
+
+      // 매출
+      if (data.revenue) {
+        const r = data.revenue;
+        add('매출', [
+          ['실적', r.actual && r.unit ? `${r.actual} ${r.unit}` : r.actual, ''],
+          ['YoY 성장', r.yoy_growth, r.yoy_growth && r.yoy_growth.startsWith('-') ? 'neg' : ''],
+        ]);
+      }
+
+      // 마진 / 가이던스
+      add('수익성', [['영업이익률', data.operating_margin, '']]);
+
+      if (data.guidance) {
+        add('가이던스', [
+          ['다음 분기', data.guidance.next_quarter, 'neutral'],
+          ['연간', data.guidance.full_year, 'neutral'],
+        ]);
+      }
+
+      // 경영진 톤
+      if (data.management_tone) {
+        const tone = data.management_tone;
+        const toneKey = tone.includes('긍정') ? '긍정' : tone.includes('부정') ? '부정' : '중립';
+        const sec = document.createElement('div');
+        sec.className = 'metric-section';
+        sec.innerHTML = `<div class="metric-label">경영진 톤</div>
+      <span class="tone-badge tone-${toneKey}">${tone}</span>`;
+        panel.appendChild(sec);
+      }
+
+      // 핵심 토픽
+      if (data.key_topics && data.key_topics.length > 0) {
+        const sec = document.createElement('div');
+        sec.className = 'metric-section';
+        sec.innerHTML = `<div class="metric-label">주요 토픽</div>
+      <div class="topics-wrap">${data.key_topics.map(t => `<span class="topic-chip">${t}</span>`).join('')}</div>`;
+        panel.appendChild(sec);
+      }
+
+      // 주요 발언
+      if (data.notable_quotes && data.notable_quotes.length > 0) {
+        const sec = document.createElement('div');
+        sec.className = 'metric-section';
+        sec.innerHTML = `<div class="metric-label">주요 발언</div>` +
+          data.notable_quotes.map(q => `<div class="quote-box">"${q}"</div>`).join('');
+        panel.appendChild(sec);
+      }
+
+      // 파싱 에러
+      if (data.parse_error) {
+        const sec = document.createElement('div');
+        sec.className = 'metric-section';
+        sec.innerHTML = `<div class="metric-label" style="color:var(--neg)">파싱 오류</div>
+      <div class="empty-hint">${data.parse_error}</div>`;
+        panel.appendChild(sec);
+      }
+    }
+
+    // WebSocket 연결
+    function connect() {
+      ws = new WebSocket(`ws://${location.host}/ws`);
+
+      ws.onopen = () => {
+        $('btn-start').disabled = true;
+        $('btn-stop').disabled = false;
+        $('btn-analyze').disabled = false;
+        $('dot').classList.add('recording');
+        startElapsed();
+      };
+
+      ws.onmessage = e => {
+        const msg = JSON.parse(e.data);
+        if (msg.type === 'status') {
+          $('status-bar').textContent = msg.text;
+          if (msg.text.includes('모델:')) {
+            // 모델 정보 파싱
+            const m = msg.text.match(/모델: (\S+) \/ (\S+)/);
+            if (m) {
+              $('stt-model').textContent = `whisper-${m[1]}`;
+              $('ai-model').textContent = m[2];
+            }
+          }
+        } else if (msg.type === 'transcript') {
+          appendTranscript(msg.text);
+          $('status-bar').textContent = '전사 중...';
+        } else if (msg.type === 'summary') {
+          appendSummary(msg.text);
+        } else if (msg.type === 'metrics') {
+          renderMetrics(msg.data);
+        } else if (msg.type === 'error') {
+          $('status-bar').textContent = '⚠ ' + msg.text;
+          $('status-bar').style.color = 'var(--neg)';
+        }
+      };
+
+      ws.onclose = () => {
+        $('btn-start').disabled = false;
+        $('btn-stop').disabled = true;
+        $('btn-analyze').disabled = true;
+        $('dot').classList.remove('recording');
+        $('status-bar').textContent = '연결 종료';
+        stopElapsed();
+      };
+    }
+
+    $('btn-start').onclick = () => {
+      isFirstTranscript = true;
+      wordCount = 0;
+      $('word-count').textContent = '0 단어';
+      connect();
+    };
+
+    $('btn-stop').onclick = () => {
+      if (ws) ws.send('stop');
+      setTimeout(() => ws && ws.close(), 300);
+    };
+
+    $('btn-analyze').onclick = () => {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send('analyze_now');
+        $('status-bar').textContent = '⚡ 즉시 분석 요청 중...';
+      }
+    };
+  </script>
+</body>
+
+</html>
