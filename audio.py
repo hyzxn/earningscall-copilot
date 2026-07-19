@@ -11,7 +11,7 @@ import sounddevice as sd
 
 
 SAMPLE_RATE = 16000   # Whisper 요구 사항
-CHUNK_SEC = 5         # 5초 청크마다 전사
+CHUNK_SEC = int(os.getenv("CHUNK_SEC", "3"))  # 청크 단위 (초)
 
 
 def _find_loopback_device() -> int:
