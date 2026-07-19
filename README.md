@@ -1,7 +1,7 @@
 # EarningsCall Copilot
 
 [![Python](https://img.shields.io/badge/Python-3.11+-blue)](https://www.python.org/)
-[![FastAPI](https://img.shields.io/badge/UI-FastAPI-009688)](https://fastapi.tiangolo.com/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-005571?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
 [![Whisper](https://img.shields.io/badge/STT-Whisper-yellow)](https://github.com/SYSTRAN/faster-whisper)
 [![Ollama](https://img.shields.io/badge/LLM-Ollama-white)](https://ollama.com/)
 
