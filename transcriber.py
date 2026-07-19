@@ -3,6 +3,7 @@ faster-whisper로 오디오 청크를 텍스트로 변환.
 모델/장치는 .env에서 결정.
 """
 import os
+
 import numpy as np
 from faster_whisper import WhisperModel
 
@@ -11,7 +12,7 @@ class Transcriber:
     def __init__(self):
         model_name = os.getenv("WHISPER_MODEL", "small")
         device = os.getenv("WHISPER_DEVICE", "cuda")
-        compute_type = "float16" if device == "cuda" else "int8"
+        compute_type = os.getenv("WHISPER_COMPUTE", "float16") if device == "cuda" else "int8"
 
         print(f"[Whisper] 모델 로딩: {model_name} / {device} / {compute_type}")
         self._model = WhisperModel(model_name, device=device, compute_type=compute_type)
