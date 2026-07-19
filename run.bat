@@ -2,4 +2,3 @@
 chcp 65001 > nul
 
 uv run python main.py
-pause
