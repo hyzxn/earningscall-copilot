@@ -463,6 +463,79 @@
     .kw-group label.neg {
       color: #ff8099;
     }
+
+    /* -- 전사 검색 -- */
+    .search-bar {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 20px;
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .search-bar label {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      letter-spacing: 0.08em;
+      white-space: nowrap;
+    }
+
+    #search-input {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      padding: 4px 10px;
+      font-family: var(--mono);
+      font-size: 11px;
+      color: var(--text);
+      outline: none;
+    }
+
+    #search-input:focus {
+      border-color: var(--accent);
+    }
+
+    #search-input::placeholder {
+      color: var(--muted);
+    }
+
+    #btn-search {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    #btn-search:hover {
+      background: var(--accent);
+      color: var(--bg);
+    }
+
+    #btn-search-clear {
+      border-color: var(--muted);
+      color: var(--muted);
+    }
+
+    #btn-search-clear:hover {
+      background: var(--muted);
+      color: var(--bg);
+    }
+
+    #search-count {
+      font-family: var(--mono);
+      font-size: 10px;
+      color: var(--muted);
+      min-width: 60px;
+      text-align: right;
+    }
+
+    mark.search-match {
+      background: rgba(0, 212, 170, 0.35);
+      color: #fff;
+      border-radius: 2px;
+      padding: 0 2px;
+    }
   </style>
   <script src="/static/keywords.js">
     function rehighlightAll() {
@@ -519,6 +592,13 @@
         style="flex:1;background:transparent;border:1px solid var(--border);border-radius:3px;padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--text);outline:none;"
         onfocus="this.style.borderColor='#ff8099'" onblur="this.style.borderColor='var(--border)'">
     </div>
+  </div>
+  <div class="search-bar">
+    <label>검색</label>
+    <input id="search-input" type="text" placeholder="전사 텍스트 검색...">
+    <button id="btn-search">검색</button>
+    <button id="btn-search-clear">지우기</button>
+    <span id="search-count"></span>
   </div>
   <div class="panels">
     <!-- 패널 1: 실시간 자막 -->
@@ -797,6 +877,49 @@
         div.innerHTML = ts + highlightKeywords(div.dataset.raw);
       });
     }
+
+    // -- 전사 검색 --
+    function searchTranscript(query) {
+      const panel = $('transcript-panel');
+      const lines = panel.querySelectorAll('.transcript-line');
+      let matchCount = 0;
+
+      lines.forEach(div => {
+        if (!div.dataset.raw) return;
+        const ts = div.querySelector('.ts').outerHTML;
+        let text = highlightKeywords(div.dataset.raw);
+
+        if (query) {
+          const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escaped})`, 'gi');
+          const matches = text.match(regex);
+          if (matches) matchCount += matches.length;
+          text = text.replace(regex, '<mark class="search-match">$1</mark>');
+        }
+
+        div.innerHTML = ts + text;
+      });
+
+      $('search-count').textContent = query ? `${matchCount}건` : '';
+
+      // 첫 번째 결과로 스크롤
+      if (query) {
+        const first = panel.querySelector('mark.search-match');
+        if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }
+
+    function clearSearch() {
+      $('search-input').value = '';
+      $('search-count').textContent = '';
+      rehighlightAll();
+    }
+
+    $('btn-search').onclick = () => searchTranscript($('search-input').value.trim());
+    $('btn-search-clear').onclick = clearSearch;
+    $('search-input').addEventListener('keydown', e => {
+      if (e.key === 'Enter') searchTranscript($('search-input').value.trim());
+    });
 
     document.addEventListener('DOMContentLoaded', () => {
       ['keyword-pos', 'keyword-neg'].forEach(id => {
