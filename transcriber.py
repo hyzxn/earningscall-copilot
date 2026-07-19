@@ -30,11 +30,13 @@ class Transcriber:
         """float32 numpy 배열 → 텍스트."""
         if audio is None or len(audio) < SAMPLE_RATE:  # 1초 미만이면 스킵
             return ""
+        # 무음 청크 스킵 (최대 절대값이very small)
+        if np.max(np.abs(audio)) < 0.001:
+            return ""
         segments, _ = self._model.transcribe(
             audio,
             language=None,        # 자동 감지 (한/영 혼합 대응)
-            vad_filter=True,      # 무음 구간 스킵
-            vad_parameters={"min_silence_duration_ms": 500},
+            vad_filter=False,     # 어닝 콜은 음성이 계속되어 VAD 비활성화
             initial_prompt=self._initial_prompt,
         )
         return " ".join(seg.text.strip() for seg in segments).strip()
