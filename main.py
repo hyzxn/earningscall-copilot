@@ -24,6 +24,7 @@ load_dotenv()
 from audio import AudioCapture
 from transcriber import Transcriber
 from analyst import Analyst
+from logger import SessionLogger
 
 app = FastAPI()
 BASE_DIR = Path(__file__).parent
@@ -50,6 +51,7 @@ async def ws_endpoint(ws: WebSocket):
         await ws.close()
         return
 
+    logger = SessionLogger()
     audio = AudioCapture()
     full_transcript = ""
     last_analysis_time = time.time()
@@ -83,6 +85,7 @@ async def ws_endpoint(ws: WebSocket):
                 if text:
                     full_transcript += " " + text
                     await ws.send_text(json.dumps({"type": "transcript", "text": text}))
+                    logger.log_cc(text)
 
             # 주기적 AI 분석 (또는 즉시 분석 요청)
             now = time.time()
@@ -100,8 +103,10 @@ async def ws_endpoint(ws: WebSocket):
                 )
                 if summary:
                     await ws.send_text(json.dumps({"type": "summary", "text": summary}))
+                    logger.log_overview(summary)
                 if metrics:
                     await ws.send_text(json.dumps({"type": "metrics", "data": metrics}))
+                    logger.log_indicator(metrics)
 
             await asyncio.sleep(0.05)
 
@@ -114,6 +119,7 @@ async def ws_endpoint(ws: WebSocket):
             pass
     finally:
         audio.stop()
+        logger.close()
 
 
 if __name__ == "__main__":
