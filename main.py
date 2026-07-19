@@ -56,6 +56,32 @@ async def ws_endpoint(ws: WebSocket):
     full_transcript = ""
     last_analysis_time = time.time()
     last_analyzed_pos = 0
+    analysis_task: asyncio.Task | None = None
+
+    async def run_analysis(text: str):
+        """AI 분석을 별도 태스크로 실행."""
+        nonlocal last_analyzed_pos
+        await ws.send_text(json.dumps({"type": "status", "text": "AI 분석 중..."}))
+        try:
+            summary, metrics = await asyncio.gather(
+                asyncio.get_event_loop().run_in_executor(
+                    None, analyst.get_summary, text
+                ),
+                asyncio.get_event_loop().run_in_executor(
+                    None, analyst.get_metrics, text
+                ),
+            )
+            if summary:
+                await ws.send_text(json.dumps({"type": "summary", "text": summary}))
+                logger.log_overview(summary)
+            if metrics:
+                await ws.send_text(json.dumps({"type": "metrics", "data": metrics}))
+                logger.log_indicator(metrics)
+            last_analyzed_pos = len(full_transcript)
+        except Exception as e:
+            await ws.send_text(json.dumps({"type": "error", "text": f"AI 분석 오류: {e}"}))
+        finally:
+            await ws.send_text(json.dumps({"type": "status", "text": "녹음 중..."}))
 
     try:
         audio.start()
@@ -81,10 +107,9 @@ async def ws_endpoint(ws: WebSocket):
             except asyncio.TimeoutError:
                 pass
 
-            # 오디오 청크 처리
+            # 오디오 청크 처리 (Whisper는 항상 우선 실행)
             chunk = await audio.get_chunk_async()
             if chunk is not None:
-                # 전사는 동기 함수 → 블로킹 방지
                 text = await asyncio.get_event_loop().run_in_executor(
                     None, transcriber.transcribe, chunk
                 )
@@ -93,28 +118,14 @@ async def ws_endpoint(ws: WebSocket):
                     await ws.send_text(json.dumps({"type": "transcript", "text": text}))
                     logger.log_cc(text)
 
-            # 주기적 AI 분석 (또는 즉시 분석 요청)
+            # 주기적 AI 분석 (또는 즉시 분석 요청) - 별도 태스크로 실행
             now = time.time()
             if full_transcript and (force_analyze or (now - last_analysis_time) >= SUMMARY_INTERVAL):
-                last_analysis_time = now
-                await ws.send_text(json.dumps({"type": "status", "text": "AI 분석 중..."}))
-
-                new_text = full_transcript[last_analyzed_pos:]
-                last_analyzed_pos = len(full_transcript)
-                summary, metrics = await asyncio.gather(
-                    asyncio.get_event_loop().run_in_executor(
-                        None, analyst.get_summary, new_text
-                    ),
-                    asyncio.get_event_loop().run_in_executor(
-                        None, analyst.get_metrics, new_text
-                    ),
-                )
-                if summary:
-                    await ws.send_text(json.dumps({"type": "summary", "text": summary}))
-                    logger.log_overview(summary)
-                if metrics:
-                    await ws.send_text(json.dumps({"type": "metrics", "data": metrics}))
-                    logger.log_indicator(metrics)
+                # 기존 분석 태스크가 진행 중이면 취소하지 않음 (리소스 절약)
+                if analysis_task is None or analysis_task.done():
+                    last_analysis_time = now
+                    new_text = full_transcript[last_analyzed_pos:]
+                    analysis_task = asyncio.create_task(run_analysis(new_text))
 
             await asyncio.sleep(0.05)
 
@@ -126,6 +137,9 @@ async def ws_endpoint(ws: WebSocket):
         except Exception:
             pass
     finally:
+        # 분석 태스크가 진행 중이면 취소
+        if analysis_task and not analysis_task.done():
+            analysis_task.cancel()
         audio.stop()
         logger.close()
 
