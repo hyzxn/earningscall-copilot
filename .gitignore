@@ -27,6 +27,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 
+# --- Docs ---
+*.md
+!README.md
+docs/
+
 # --- Project Specific ---
 test-codes/
 logs/
