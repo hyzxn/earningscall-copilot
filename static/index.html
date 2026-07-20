@@ -170,6 +170,7 @@
     /* ── 3분할 메인 ── */
     .panels {
       display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
       gap: 1px;
       background: var(--border);
       flex: 1;
@@ -631,7 +632,7 @@
         <span class="panel-title">실시간 자막</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="panel-badge" id="stt-model">—</span>
-          <button class="panel-toggle" data-toggle="transcript" title="패널 숨기기">−</button>
+          <button class="panel-toggle" data-toggle="transcript" title="패널 숨기기">=</button>
         </div>
       </div>
       <div class="panel-body" id="transcript-panel">
@@ -645,7 +646,7 @@
         <span class="panel-title">AI 요약</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="panel-badge" id="ai-model">—</span>
-          <button class="panel-toggle" data-toggle="summary" title="패널 숨기기">−</button>
+          <button class="panel-toggle" data-toggle="summary" title="패널 숨기기">=</button>
         </div>
       </div>
       <div class="panel-body" id="summary-panel">
@@ -659,7 +660,7 @@
         <span class="panel-title">주요 지표</span>
         <div style="display:flex;align-items:center;gap:6px">
           <span class="panel-badge" id="metrics-updated">—</span>
-          <button class="panel-toggle" data-toggle="metrics" title="패널 숨기기">−</button>
+          <button class="panel-toggle" data-toggle="metrics" title="패널 숨기기">=</button>
         </div>
       </div>
       <div class="panel-body" id="metrics-panel">
@@ -1024,7 +1025,7 @@
 
       panels.forEach(p => {
         const btn = p.querySelector('.panel-toggle');
-        btn.textContent = p.classList.contains('hidden') ? '+' : '−';
+        btn.textContent = '=';
       });
 
       // 숨겨진 패널은 다시 보이기 가능, 나머지 hide 버튼은 1개 남으면 비활성화
@@ -1037,10 +1038,10 @@
         }
       });
 
-      // grid columns 동적 조정: 보이는 패널은 1fr, 숨긴 패널은 32px
+      // grid rows 동적 조정: 보이는 패널은 1fr, 숨긴 패널은 32px
       const grid = document.querySelector('.panels');
-      const colDefs = [...panels].map(p => p.classList.contains('hidden') ? '32px' : '1fr');
-      grid.style.gridTemplateColumns = colDefs.join(' ');
+      const rowDefs = [...panels].map(p => p.classList.contains('hidden') ? '32px' : '1fr');
+      grid.style.gridTemplateColumns = rowDefs.join(' ');
     }
 
     document.querySelectorAll('.panel-toggle').forEach(btn => {
