@@ -9,7 +9,9 @@ Gemini API 또는 Ollama 로컬 모델로 누적 스크립트를 분석한다.
 """
 import os
 import json
+import re
 from pathlib import Path
+from string import Template
 import httpx
 
 PROMPTS_DIR = Path(__file__).parent / "prompts"
@@ -46,9 +48,10 @@ class Analyst:
     # --- 백엔드별 _call 구현 ---
 
     def _call_gemini(self, prompt: str) -> str:
-        url = f"{GEMINI_BASE}/{self._model}:generateContent?key={self._api_key}"
+        url = f"{GEMINI_BASE}/{self._model}:generateContent"
+        headers = {"x-goog-api-key": self._api_key}
         body = {"contents": [{"parts": [{"text": prompt}]}]}
-        resp = httpx.post(url, json=body, timeout=100)
+        resp = httpx.post(url, json=body, headers=headers, timeout=100)
         resp.raise_for_status()
         data = resp.json()
         return data["candidates"][0]["content"]["parts"][0]["text"]
@@ -75,15 +78,20 @@ class Analyst:
     def get_summary(self, transcript: str) -> str:
         if not transcript.strip():
             return ""
-        prompt = _load_prompt("summary.md").format(transcript=transcript[-4000:])
+        prompt = Template(_load_prompt("summary.md")).substitute(transcript=transcript[-4000:])
         return self._call(prompt)
 
     def get_metrics(self, transcript: str) -> dict:
         if not transcript.strip():
             return {}
-        prompt = _load_prompt("metrics.md").format(transcript=transcript[-6000:])
+        prompt = Template(_load_prompt("metrics.md")).substitute(transcript=transcript[-6000:])
         raw = self._call(prompt)
-        raw = raw.strip().removeprefix("```json").removeprefix("```").removesuffix("```").strip()
+        raw = raw.strip()
+        # JSON 블록 추출: 첫 번째 { ~ 마지막 } 사이
+        start = raw.find("{")
+        end = raw.rfind("}")
+        if start != -1 and end != -1 and end > start:
+            raw = raw[start : end + 1]
         try:
             return json.loads(raw)
         except json.JSONDecodeError:

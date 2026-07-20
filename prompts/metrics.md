@@ -2,7 +2,7 @@ You are a financial data extraction specialist.
 Extract structured financial metrics from this earnings call transcript.
 
 Transcript:
-{transcript}
+$transcript
 
 Return ONLY valid JSON (no markdown, no explanation):
 {{
