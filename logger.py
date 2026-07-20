@@ -26,8 +26,11 @@ class SessionLogger:
         self._write(self._indicator, f"[EarningsCall Copilot] 지표 추출 로그: {datetime.now()}\n{'='*60}\n")
 
     def _write(self, path: Path, text: str, mode="w"):
-        with open(path, mode, encoding="utf-8") as f:
-            f.write(text)
+        try:
+            with open(path, mode, encoding="utf-8") as f:
+                f.write(text)
+        except OSError:
+            pass
 
     def log_cc(self, text: str):
         ts = datetime.now().strftime("%H:%M:%S")
