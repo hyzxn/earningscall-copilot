@@ -175,7 +175,6 @@
       background: var(--border);
       flex: 1;
       overflow: hidden;
-      transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .panel {
@@ -1022,49 +1021,84 @@
       if (e.key === 'Enter') searchTranscript($('search-input').value.trim());
     });
 
-    // -- 패널 hide/토글 --
+    // -- 패널 hide/토글 (rAF 애니메이션) --
     const PANEL_COLLAPSED_W = 48;
+    const PANEL_ANIM_MS = 350;
+    let colWidths = null;
+    let animFrom = null, animTo = null, animStart = 0, animFrame = null;
 
-    function updatePanelLayout() {
+    function panelEase(t) {
+      return 1 - Math.pow(1 - t, 3);
+    }
+
+    function calcTargetWidths() {
       const grid = document.querySelector('.panels');
       const panels = [...document.querySelectorAll('.panel')];
       const visiblePanels = panels.filter(p => !p.classList.contains('hidden'));
       const collapsedCount = panels.length - visiblePanels.length;
 
-      panels.forEach(p => {
-        const btn = p.querySelector('.panel-toggle');
-        btn.textContent = '=';
-      });
-
-      document.querySelectorAll('.panel-toggle').forEach(btn => {
-        const panel = btn.closest('.panel');
-        if (panel.classList.contains('hidden')) {
-          btn.disabled = false;
-        } else {
-          btn.disabled = visiblePanels.length <= 1;
-        }
-      });
-
       const totalWidth = grid.clientWidth;
-      if (totalWidth === 0) {
-        grid.style.gridTemplateColumns = '1fr 1fr 1fr';
-        return;
-      }
+      if (totalWidth === 0) return null;
 
       const gapTotal = panels.length - 1;
       const availableWidth = totalWidth - gapTotal - (collapsedCount * PANEL_COLLAPSED_W);
       const perVisible = visiblePanels.length > 0 ? availableWidth / visiblePanels.length : 0;
 
-      const colWidths = panels.map(p =>
-        p.classList.contains('hidden') ? `${PANEL_COLLAPSED_W}px` : `${Math.floor(perVisible)}px`
+      return panels.map(p =>
+        p.classList.contains('hidden') ? PANEL_COLLAPSED_W : Math.floor(perVisible)
       );
-      grid.style.gridTemplateColumns = colWidths.join(' ');
+    }
+
+    function applyWidths(w) {
+      document.querySelector('.panels').style.gridTemplateColumns = w.map(v => v + 'px').join(' ');
+    }
+
+    function tickPanel(ts) {
+      const t = Math.min((ts - animStart) / PANEL_ANIM_MS, 1);
+      const e = panelEase(t);
+      applyWidths(animFrom.map((f, i) => Math.round(f + (animTo[i] - f) * e)));
+      if (t < 1) {
+        animFrame = requestAnimationFrame(tickPanel);
+      } else {
+        colWidths = animTo;
+        animFrame = null;
+      }
+    }
+
+    function updatePanelLayout() {
+      const panels = [...document.querySelectorAll('.panel')];
+      const visiblePanels = panels.filter(p => !p.classList.contains('hidden'));
+
+      panels.forEach(p => {
+        p.querySelector('.panel-toggle').textContent = '=';
+      });
+
+      document.querySelectorAll('.panel-toggle').forEach(btn => {
+        const panel = btn.closest('.panel');
+        btn.disabled = panel.classList.contains('hidden')
+          ? false
+          : visiblePanels.length <= 1;
+      });
+
+      const target = calcTargetWidths();
+      if (!target) return;
+
+      if (!colWidths) {
+        colWidths = target;
+        applyWidths(target);
+        return;
+      }
+
+      if (animFrame) cancelAnimationFrame(animFrame);
+      animFrom = [...colWidths];
+      animTo = target;
+      animStart = performance.now();
+      animFrame = requestAnimationFrame(tickPanel);
     }
 
     document.querySelectorAll('.panel-toggle').forEach(btn => {
       btn.addEventListener('click', () => {
-        const panel = btn.closest('.panel');
-        panel.classList.toggle('hidden');
+        btn.closest('.panel').classList.toggle('hidden');
         updatePanelLayout();
       });
     });
@@ -1075,12 +1109,7 @@
       });
       $('keyword-pos').value = DEFAULT_KEYWORDS.pos.join(', ');
       $('keyword-neg').value = DEFAULT_KEYWORDS.neg.join(', ');
-
-      const grid = document.querySelector('.panels');
-      grid.style.transition = 'none';
       updatePanelLayout();
-      grid.offsetHeight;
-      grid.style.transition = '';
     });
   </script>
 </body>
