@@ -48,6 +48,7 @@ class AudioCapture:
         self._device_idx = _find_loopback_device()
         self._buffer: list[np.ndarray] = []
         self._buffer_samples = CHUNK_SEC * SAMPLE_RATE
+        self._gain = float(os.getenv("AUDIO_GAIN", "1.0"))
 
     def start(self):
         self._stop_event.clear()
@@ -65,15 +66,13 @@ class AudioCapture:
             self._buffer.append(audio)
             total = sum(len(a) for a in self._buffer)
             if total >= self._buffer_samples:
-                chunk = np.concatenate(self._buffer)
-                gain = float(os.getenv("AUDIO_GAIN", "1.0"))
-                if gain != 1.0:
-                    chunk = np.clip(chunk * gain, -1.0, 1.0)
-                chunk = chunk[: self._buffer_samples]
+                full_chunk = np.concatenate(self._buffer)
+                if self._gain != 1.0:
+                    full_chunk = np.clip(full_chunk * self._gain, -1.0, 1.0)
+                chunk = full_chunk[: self._buffer_samples]
+                overflow = full_chunk[self._buffer_samples :]
                 if len(chunk) > 0:
                     self._q.put(chunk)
-                # 남은 오버플로우는 버퍼 첫 항목으로
-                overflow = chunk[self._buffer_samples :]
                 self._buffer = [overflow] if len(overflow) > 0 else []
 
         with sd.InputStream(
