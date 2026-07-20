@@ -4,6 +4,6 @@ Analyze the following earnings call transcript excerpt and provide:
 2. Management tone assessment (긍정/중립/부정 + brief reason)
 
 Transcript:
-{transcript}
+$transcript
 
 Respond in Korean. Be concise and factual.
