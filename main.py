@@ -30,7 +30,7 @@ app = FastAPI()
 BASE_DIR = Path(__file__).parent
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
-SUMMARY_INTERVAL = int(os.getenv("SUMMARY_INTERVAL_SEC", "180"))
+SUMMARY_INTERVAL = int(os.getenv("SUMMARY_INTERVAL_SEC", "60"))
 
 
 @app.get("/")
@@ -48,12 +48,11 @@ async def ws_endpoint(ws: WebSocket):
         lang_msg = await asyncio.wait_for(ws.receive_text(), timeout=5)
         lang_data = json.loads(lang_msg)
         whisper_lang = lang_data.get("lang", "ko")
-        os.environ["WHISPER_LANG"] = whisper_lang
     except (asyncio.TimeoutError, json.JSONDecodeError):
         whisper_lang = os.getenv("WHISPER_LANG", "ko")
 
     try:
-        transcriber = Transcriber()
+        transcriber = Transcriber(whisper_lang=whisper_lang)
         analyst = Analyst()
     except Exception as e:
         await ws.send_text(json.dumps({"type": "error", "text": str(e)}))
@@ -62,6 +61,7 @@ async def ws_endpoint(ws: WebSocket):
 
     logger = SessionLogger()
     audio = AudioCapture()
+    full_transcript_parts: list[str] = []
     full_transcript = ""
     last_analysis_time = time.time()
     last_analyzed_pos = 0
@@ -73,17 +73,18 @@ async def ws_endpoint(ws: WebSocket):
         await ws.send_text(json.dumps({"type": "status", "text": "AI 분석 중..."}))
         try:
             summary, metrics = await asyncio.gather(
-                asyncio.get_event_loop().run_in_executor(
+                asyncio.get_running_loop().run_in_executor(
                     None, analyst.get_summary, text
                 ),
-                asyncio.get_event_loop().run_in_executor(
+                asyncio.get_running_loop().run_in_executor(
                     None, analyst.get_metrics, text
                 ),
+                return_exceptions=True,
             )
-            if summary:
+            if summary and not isinstance(summary, Exception):
                 await ws.send_text(json.dumps({"type": "summary", "text": summary}))
                 logger.log_overview(summary)
-            if metrics:
+            if metrics and not isinstance(metrics, Exception):
                 await ws.send_text(json.dumps({"type": "metrics", "data": metrics}))
                 logger.log_indicator(metrics)
             last_analyzed_pos = len(full_transcript)
@@ -119,11 +120,12 @@ async def ws_endpoint(ws: WebSocket):
             # 오디오 청크 처리 (Whisper는 항상 우선 실행)
             chunk = await audio.get_chunk_async()
             if chunk is not None:
-                text = await asyncio.get_event_loop().run_in_executor(
+                text = await asyncio.get_running_loop().run_in_executor(
                     None, transcriber.transcribe, chunk
                 )
                 if text:
-                    full_transcript += " " + text
+                    full_transcript_parts.append(text)
+                    full_transcript = " ".join(full_transcript_parts)
                     await ws.send_text(json.dumps({"type": "transcript", "text": text}))
                     logger.log_cc(text)
 
