@@ -13,13 +13,14 @@ PROMPTS_DIR = Path(__file__).parent / "prompts"
 
 
 class Transcriber:
-    def __init__(self):
+    def __init__(self, whisper_lang: str | None = None):
         model_name = os.getenv("WHISPER_MODEL", "small")
         device = os.getenv("WHISPER_DEVICE", "cuda")
         compute_type = os.getenv("WHISPER_COMPUTE", "float16") if device == "cuda" else "int8"
 
         # 금융 도메인 초기 프롬프트 로드 (언어 선택)
-        whisper_lang = os.getenv("WHISPER_LANG", "ko")
+        if whisper_lang is None:
+            whisper_lang = os.getenv("WHISPER_LANG", "ko")
         prompt_file = f"whisper-initial-{whisper_lang}.md"
         initial_prompt_path = PROMPTS_DIR / prompt_file
         self._initial_prompt = initial_prompt_path.read_text(encoding="utf-8") if initial_prompt_path.exists() else None
