@@ -175,6 +175,7 @@
       background: var(--border);
       flex: 1;
       overflow: hidden;
+      transition: grid-template-columns 0.35s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .panel {
@@ -216,6 +217,7 @@
       overflow-y: auto;
       padding: 12px 14px;
       scroll-behavior: smooth;
+      transition: opacity 0.25s ease;
     }
 
     .panel-body::-webkit-scrollbar {
@@ -390,7 +392,9 @@
     }
 
     .panel.hidden .panel-body {
-      display: none;
+      opacity: 0;
+      overflow: hidden;
+      pointer-events: none;
     }
 
     .panel.hidden .panel-title,
@@ -1019,29 +1023,42 @@
     });
 
     // -- 패널 hide/토글 --
+    const PANEL_COLLAPSED_W = 48;
+
     function updatePanelLayout() {
-      const panels = document.querySelectorAll('.panel');
-      const visible = [...panels].filter(p => !p.classList.contains('hidden'));
+      const grid = document.querySelector('.panels');
+      const panels = [...document.querySelectorAll('.panel')];
+      const visiblePanels = panels.filter(p => !p.classList.contains('hidden'));
+      const collapsedCount = panels.length - visiblePanels.length;
 
       panels.forEach(p => {
         const btn = p.querySelector('.panel-toggle');
         btn.textContent = '=';
       });
 
-      // 숨겨진 패널은 다시 보이기 가능, 나머지 hide 버튼은 1개 남으면 비활성화
       document.querySelectorAll('.panel-toggle').forEach(btn => {
         const panel = btn.closest('.panel');
         if (panel.classList.contains('hidden')) {
           btn.disabled = false;
         } else {
-          btn.disabled = visible.length <= 1;
+          btn.disabled = visiblePanels.length <= 1;
         }
       });
 
-      // grid rows 동적 조정: 보이는 패널은 1fr, 숨긴 패널은 32px
-      const grid = document.querySelector('.panels');
-      const rowDefs = [...panels].map(p => p.classList.contains('hidden') ? '32px' : '1fr');
-      grid.style.gridTemplateColumns = rowDefs.join(' ');
+      const totalWidth = grid.clientWidth;
+      if (totalWidth === 0) {
+        grid.style.gridTemplateColumns = '1fr 1fr 1fr';
+        return;
+      }
+
+      const gapTotal = panels.length - 1;
+      const availableWidth = totalWidth - gapTotal - (collapsedCount * PANEL_COLLAPSED_W);
+      const perVisible = visiblePanels.length > 0 ? availableWidth / visiblePanels.length : 0;
+
+      const colWidths = panels.map(p =>
+        p.classList.contains('hidden') ? `${PANEL_COLLAPSED_W}px` : `${Math.floor(perVisible)}px`
+      );
+      grid.style.gridTemplateColumns = colWidths.join(' ');
     }
 
     document.querySelectorAll('.panel-toggle').forEach(btn => {
@@ -1058,7 +1075,12 @@
       });
       $('keyword-pos').value = DEFAULT_KEYWORDS.pos.join(', ');
       $('keyword-neg').value = DEFAULT_KEYWORDS.neg.join(', ');
+
+      const grid = document.querySelector('.panels');
+      grid.style.transition = 'none';
       updatePanelLayout();
+      grid.offsetHeight;
+      grid.style.transition = '';
     });
   </script>
 </body>
